@@ -1,0 +1,89 @@
+x-dns-settings: &default-dns
+  dns:
+    - 1.1.1.1
+    - 8.8.8.8
+
+networks:
+  services_net:
+    driver: bridge
+
+services:
+  ip_syncer:
+    image: kamuri/ip-syncer:0.0.2
+    restart: unless-stopped
+    env_file: .env
+    container_name: syncer
+    networks:
+      - services_net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.01"
+          memory: 10M
+
+  home:
+    image: ghcr.io/gethomepage/homepage:v1.11
+    container_name: homepage
+    <<: *default-dns
+    environment:
+      HOMEPAGE_ALLOWED_HOSTS: home.kamuridesu.com,home.internal
+      PUID: ${PUID}
+      PGID: ${PGID}
+    networks:
+      - services_net
+    volumes:
+      - ${HOMEPAGE_CONFIG}:/app/config
+    ports:
+      - 3000:3000
+    restart: unless-stopped
+
+  pluto_api:
+    container_name: pluto-api
+    image: quay.io/kamuridesu/pluto-playlist-api
+    <<: *default-dns
+    restart: unless-stopped
+    environment:
+      - TZ_INFO=${TZ_INFO}
+      - TOTAL_DELAY_SECONDS=86400
+    networks:
+      - services_net
+    ports:
+      - 3002:3000
+    deploy:
+      resources:
+        limits:
+          cpus: 0.3
+          memory: 200M
+
+  go_anilist:
+    container_name: go-anilist-ical
+    image: kamuri/go-anilist-ical:1.0.0
+    <<: *default-dns
+    restart: unless-stopped
+    networks:
+      - services_net
+    ports:
+      - 8080:8080
+    deploy:
+      resources:
+        limits:
+          cpus: 0.1
+          memory: 100M
+
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:14
+    container_name: forgejo
+    <<: *default-dns
+    environment:
+      - TZ=${TZ_INFO}
+      - USER_UID=${PUID}
+      - USER_GID=${PGID}
+    networks:
+      - services_net
+    volumes:
+      - ${FORGEJO_CONFIG}:/data
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - 3001:3000
+      - 222:22
+    restart: unless-stopped

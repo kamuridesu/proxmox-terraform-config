@@ -1,0 +1,31 @@
+- name: Setup Edge Router
+  hosts: proxy
+  become: true
+  roles:
+    - role: proxy
+
+- name: Setup Media Stack
+  hosts: media
+  become: true
+  roles:
+    - role: docker
+    - role: app_stack
+      vars:
+        stack_src_dir: "./configs/media-stack"
+
+- name: Setup Services Stack
+  hosts: services
+  become: true
+  roles:
+    - role: docker
+    - role: app_stack
+      vars:
+        stack_src_dir: "./configs/services-stack"
+
+- name: Provision docker
+  gather_facts: true
+  hosts: dockerable
+  remote_user: root
+  roles:
+    - role: docker
+  tags: docker

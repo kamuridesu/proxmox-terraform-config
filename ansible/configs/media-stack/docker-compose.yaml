@@ -1,0 +1,171 @@
+x-dns-settings: &default-dns
+  dns:
+    - 1.1.1.1
+    - 8.8.8.8
+
+networks:
+  backend:
+    driver: bridge
+    internal: false
+
+services:
+  jellyfin:
+    container_name: jellyfin
+    image: ghcr.io/jellyfin/jellyfin:10.11.6
+    restart: unless-stopped
+    <<: *default-dns
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=002
+      - TZ=${TZ_INFO}
+    networks:
+      - backend
+    volumes:
+      - ${JELLYFIN_CONFIG}:/config
+      - ${JELLYFIN_HOME}:/data
+    ports:
+      - 8096:8096
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - "108"
+    deploy:
+      resources:
+        limits:
+          cpus: 2
+          memory: 2G
+
+  seerr:
+    image: ghcr.io/seerr-team/seerr:latest
+    <<: *default-dns
+    init: true
+    container_name: seerr
+    environment:
+      - LOG_LEVEL=debug
+      - TZ=${TZ_INFO}
+    networks:
+      - backend
+    volumes:
+      - ${JELLYSEERR_CONFIG}:/app/config
+    ports:
+      - 5055:5055
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:5055/api/v1/status || exit 1
+      start_period: 20s
+      timeout: 3s
+      interval: 15s
+      retries: 3
+    restart: unless-stopped
+
+  sonarr:
+    container_name: sonarr
+    image: ghcr.io/hotio/sonarr:release-4.0.17.2952
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=002
+      - TZ=${TZ_INFO}
+    networks:
+      - backend
+    <<: *default-dns
+    volumes:
+      - ${SONARR_HOME}:/data
+      - ${SONARR_CONFIG}:/config
+    ports:
+      - 8989:8989
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 300M
+
+  radarr:
+    container_name: radarr
+    image: ghcr.io/hotio/radarr:release-6.0.4.10291
+    <<: *default-dns
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=002
+      - TZ=${TZ_INFO}
+    networks:
+      - backend
+    volumes:
+      - ${RADARR_CONFIG}:/config
+      - ${RADARR_HOME}:/data
+    ports:
+      - 7878:7878
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 300M
+
+  prowlarr:
+    container_name: prowlarr
+    image: ghcr.io/hotio/prowlarr:release-2.3.0.5236
+    <<: *default-dns
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=002
+      - TZ=${TZ_INFO}
+    networks:
+      - backend
+    volumes:
+      - ${PROWLARR_CONFIG}:/config
+    ports:
+      - 9696:9696
+    deploy:
+      resources:
+        limits:
+          cpus: 0.6
+          memory: 500M
+
+  bazarr:
+    container_name: bazarr
+    image: ghcr.io/hotio/bazarr:release-v1.5.6
+    <<: *default-dns
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=002
+      - TZ=${TZ_INFO}
+      - WEBUI_PORTS=6767/tcp,6767/udp
+    networks:
+      - backend
+    volumes:
+      - ${BAZARR_CONFIG}:/config
+      - ${BAZARR_HOME}:/data
+    ports:
+      - 6767:6767
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 1G
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ_INFO}
+      - WEBUI_PORT=58080
+    networks:
+      - backend
+    volumes:
+      - ${QBITTORRENT_CONFIG}:/config
+      - ${QBITTORRENT_HOME}:/data
+      - ${QBITTORRENT_HOME}:/home/kamuri/mnt/AMENOHABAKIRI/Streaming
+    ports:
+      - 58080:58080
+      - 51185:51185
+      - 51185:51185/udp
+    restart: unless-stopped

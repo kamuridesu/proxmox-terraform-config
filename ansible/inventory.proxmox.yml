@@ -1,0 +1,17 @@
+plugin: community.proxmox.proxmox
+url: "{{ lookup('env', 'PROXMOX_URL') }}"
+validate_certs: false
+user: "{{ lookup('env', 'PROXMOX_USER') }}"
+token_id: "{{ lookup('env', 'PROXMOX_TOKEN_ID') }}"
+token_secret: "{{ lookup('env', 'PROXMOX_TOKEN_SECRET') }}"
+want_facts: true
+keyed_groups:
+  - key: proxmox_tags_parsed
+    separator: ""
+groups:
+  dockerable: "'dockerable' in (proxmox_tags_parsed|list)"
+  proxy: "'proxy' in (proxmox_tags_parsed|list)"
+  services: "'services' in (proxmox_tags_parsed|list)"
+  media: "'media' in (proxmox_tags_parsed|list)"
+compose:
+  ansible_host: proxmox_net0.ip | regex_replace('/.*$', '')

@@ -1,0 +1,35 @@
+---
+- name: Update and install dependencies
+  become: true
+  ansible.builtin.apt:
+    state: present
+    update_cache: true
+    name:
+      - vim
+      - ssh
+      - git
+      - curl
+      - apt-transport-https
+      - gnupg
+      - sudo
+      - rsync
+
+- name: Add Docker GPG apt key
+  ansible.builtin.apt_key:
+    url: https://download.docker.com/linux/debian/gpg
+    state: present
+
+- name: Add Docker repository
+  ansible.builtin.apt_repository:
+    repo: deb https://download.docker.com/linux/debian bookworm stable
+    state: present
+
+- name: Install Docker and Docker Compose
+  ansible.builtin.apt:
+    state: present
+    update_cache: true
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin

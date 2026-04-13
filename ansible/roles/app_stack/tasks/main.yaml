@@ -1,0 +1,13 @@
+---
+- name: Sync compose stack configuration
+  ansible.posix.synchronize:
+    src: "{{ stack_src_dir }}/"
+    dest: "/opt/home-server/"
+    delete: true
+
+- name: Spin up Docker Compose stack
+  community.docker.docker_compose_v2:
+    project_src: /opt/home-server
+    state: present
+    pull: always
+    remove_orphans: true
