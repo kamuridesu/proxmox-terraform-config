@@ -92,7 +92,7 @@ resource "proxmox_virtual_environment_container" "media_stack" {
   }
 
   device_passthrough {
-    path = "/dev/dri/card1"
+    path = "/dev/dri/card0"
     mode = "0666"
   }
 
