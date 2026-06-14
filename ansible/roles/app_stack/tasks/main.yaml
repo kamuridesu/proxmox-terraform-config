@@ -4,6 +4,8 @@
     src: "{{ stack_src_dir }}/"
     dest: "/opt/home-server/"
     delete: true
+    rsync_opts:
+      - "--exclude=app_configs"
 
 - name: Spin up Docker Compose stack
   community.docker.docker_compose_v2:

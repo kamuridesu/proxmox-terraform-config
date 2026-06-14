@@ -1,0 +1,63 @@
+---
+- name: Ensure target date is provided
+  ansible.builtin.fail:
+    msg: "You must provide a restore_date. Example: -e 'restore_date=2026-05-31'"
+  when: restore_date is not defined
+
+- name: Set local backup directory path
+  ansible.builtin.set_fact:
+    local_backup_dir: "{{ playbook_dir }}/backups/{{ inventory_hostname }}_{{ restore_date }}"
+
+- name: Check if local backup directory exists
+  delegate_to: localhost
+  become: false
+  ansible.builtin.stat:
+    path: "{{ local_backup_dir }}"
+  register: backup_dir_stat
+
+- name: Fail if backup directory does not exist
+  ansible.builtin.fail:
+    msg: "Backup directory {{ local_backup_dir }} does not exist!"
+  when: not backup_dir_stat.stat.exists
+
+- name: Restore Docker Compose stack configuration (/opt/home-server/)
+  become: true
+  ansible.posix.synchronize:
+    mode: push
+    src: "{{ local_backup_dir }}/"
+    dest: "/opt/home-server/"
+    rsync_opts:
+      - "--exclude=app_configs"
+      - "--exclude=*app_configs*"
+
+- name: Check for .env in the local backup
+  delegate_to: localhost
+  become: false
+  ansible.builtin.stat:
+    path: "{{ local_backup_dir }}/.env"
+  register: local_env_file
+
+- name: Extract ROOT_FOLDER from backed-up .env
+  delegate_to: localhost
+  become: false
+  ansible.builtin.shell: |
+    set -a
+    source {{ local_backup_dir }}/.env
+    set +a
+    echo $ROOT_FOLDER
+  args:
+    executable: /bin/bash
+  register: local_root_folder
+  when: local_env_file.stat.exists
+  changed_when: false
+
+- name: Restore app configurations
+  become: true
+  ansible.posix.synchronize:
+    mode: push
+    src: "{{ local_backup_dir }}/{{ local_root_folder.stdout | basename }}/"
+    dest: "{{ local_root_folder.stdout }}/"
+    dirs: true
+  when:
+    - local_env_file.stat.exists
+    - local_root_folder.stdout != ""

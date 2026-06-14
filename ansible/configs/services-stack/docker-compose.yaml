@@ -73,6 +73,7 @@ services:
   forgejo:
     image: codeberg.org/forgejo/forgejo:14
     container_name: forgejo
+    restart: unless-stopped
     <<: *default-dns
     environment:
       - TZ=${TZ_INFO}
@@ -86,4 +87,42 @@ services:
     ports:
       - 3001:3000
       - 222:22
+
+  adguard:
+    image: adguard/adguardhome:v0.107.74
+    container_name: adguard
     restart: unless-stopped
+    <<: *default-dns
+    networks:
+      - services_net
+    volumes:
+      - ${ADGUARD_WD}:/opt/adguardhome/work
+      - ${ADGUARD_CONFIG}:/opt/adguardhome/conf
+    ports:
+      - 53:53/udp
+      - 53:53/tcp
+      # - 67:67/udp
+      # - 68:68/udp
+      - 80:80/tcp
+      - 443:443/tcp
+      - 443:443/udp
+      - 3003:3000/tcp
+      - 853:853/tcp
+      - 853:853/udp
+      - 5443:5443/tcp
+      - 5443:5443/udp
+      # - 6060:6060/tcp
+      #
+
+  readeck:
+    image: codeberg.org/readeck/readeck:0.22.3
+    container_name: readeck
+    restart: unless-stopped
+    <<: *default-dns
+    env_file: .env
+    networks:
+      - services_net
+    volumes:
+      - ${READECK_CONFIG}:/readeck
+    ports:
+      - 8000:8000

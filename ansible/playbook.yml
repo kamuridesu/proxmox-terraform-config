@@ -1,8 +1,24 @@
+- name: Backup Existing Stacks
+  hosts: media, services, database
+  gather_facts: true
+  become: true
+  roles:
+    - role: backup
+  tags: backup
+
+- name: Setup Database Stack
+  hosts: database
+  become: true
+  roles:
+    - role: postgres
+  tags: database
+
 - name: Setup Edge Router
   hosts: proxy
   become: true
   roles:
     - role: proxy
+  tags: proxy
 
 - name: Setup Media Stack
   hosts: media
@@ -12,6 +28,7 @@
     - role: app_stack
       vars:
         stack_src_dir: "./configs/media-stack"
+  tags: media
 
 - name: Setup Services Stack
   hosts: services
@@ -21,6 +38,7 @@
     - role: app_stack
       vars:
         stack_src_dir: "./configs/services-stack"
+  tags: services
 
 - name: Provision docker
   gather_facts: true
@@ -29,3 +47,11 @@
   roles:
     - role: docker
   tags: docker
+
+- name: Restore Existing Stacks
+  hosts: media, services
+  gather_facts: false
+  become: true
+  tags: ["never", "restore"]
+  roles:
+    - role: restore

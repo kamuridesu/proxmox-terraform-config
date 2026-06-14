@@ -1,0 +1,60 @@
+---
+- name: Ensure locales package is installed
+  become: true
+  ansible.builtin.apt:
+    name: locales
+    state: present
+    update_cache: true
+
+- name: Ensure en_US.UTF-8 is enabled in locale.gen
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/locale.gen
+    regexp: '^#?\s*en_US\.UTF-8\s+UTF-8'
+    line: "en_US.UTF-8 UTF-8"
+  register: locale_update
+
+- name: Generate en_US.UTF-8 locale
+  become: true
+  ansible.builtin.command: locale-gen
+  when: locale_update.changed
+
+- name: Set default system locale to en_US.UTF-8
+  become: true
+  ansible.builtin.command: update-locale LANG=en_US.UTF-8
+  when: locale_update.changed
+
+- name: Install PostgreSQL and dependencies
+  become: true
+  ansible.builtin.apt:
+    name:
+      - postgresql
+      - postgresql-contrib
+      - python3-psycopg2
+      - acl
+      - rsync
+    state: present
+
+- name: Ensure PostgreSQL is listening on all addresses
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/postgresql/15/main/postgresql.conf
+    regexp: "^#?listen_addresses = .*"
+    line: "listen_addresses = '*'"
+    state: present
+  notify: Restart PostgreSQL
+
+- name: Allow internal network to connect
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/postgresql/15/main/pg_hba.conf
+    line: "host    all             all             192.168.0.0/24          scram-sha-256"
+    state: present
+  notify: Restart PostgreSQL
+
+- name: Start and enable PostgreSQL
+  become: true
+  ansible.builtin.systemd:
+    name: postgresql
+    state: started
+    enabled: true

@@ -13,5 +13,6 @@ groups:
   proxy: "'proxy' in (proxmox_tags_parsed|list)"
   services: "'services' in (proxmox_tags_parsed|list)"
   media: "'media' in (proxmox_tags_parsed|list)"
+  database: "'database' in (proxmox_tags_parsed|list)"
 compose:
   ansible_host: proxmox_net0.ip | regex_replace('/.*$', '')

@@ -1,0 +1,65 @@
+---
+- name: Create local backup directory for the host
+  delegate_to: localhost
+  run_once: false
+  become: false
+  ansible.builtin.file:
+    path: "{{ playbook_dir }}/backups/{{ inventory_hostname }}_{{ ansible_facts.date_time.date }}"
+    state: directory
+    mode: "0755"
+
+- name: Check if compose .env file exists
+  become: true
+  ansible.builtin.stat:
+    path: /opt/home-server/.env
+  register: env_file
+
+- name: Extract ROOT_FOLDER from .env (if it exists)
+  become: true
+  ansible.builtin.shell: |
+    set -a
+    source /opt/home-server/.env
+    set +a
+    echo $ROOT_FOLDER
+  args:
+    executable: /bin/bash
+  register: root_folder
+  when: env_file.stat.exists
+  changed_when: false
+
+- name: Pull configurations and Docker volumes to local machine
+  become: false
+  ansible.posix.synchronize:
+    mode: pull
+    src: "{{ item }}"
+    dest: "{{ playbook_dir }}/backups/{{ inventory_hostname }}_{{ ansible_facts.date_time.date }}/"
+    archive: true
+    dirs: true
+  loop:
+    - "/opt/home-server/"
+    - "{{ root_folder.stdout | default('') }}"
+  when: item != ""
+  ignore_errors: true
+
+- name: PostgreSQL Backup Tasks
+  when: "'database' in group_names"
+  block:
+    - name: Dump all PostgreSQL databases and roles to a file
+      become: true
+      become_method: su
+      become_user: postgres
+      ansible.builtin.shell: pg_dumpall > /tmp/db_backup_{{ ansible_facts.date_time.date }}.sql
+      changed_when: true
+
+    - name: Pull PostgreSQL dump to local machine
+      become: false
+      ansible.posix.synchronize:
+        mode: pull
+        src: "/tmp/db_backup_{{ ansible_facts.date_time.date }}.sql"
+        dest: "{{ playbook_dir }}/backups/{{ inventory_hostname }}_{{ ansible_facts.date_time.date }}/"
+
+    - name: Cleanup temporary remote PostgreSQL dump
+      become: true
+      ansible.builtin.file:
+        path: "/tmp/db_backup_{{ ansible_facts.date_time.date }}.sql"
+        state: absent
