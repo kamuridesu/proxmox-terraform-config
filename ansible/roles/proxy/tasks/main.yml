@@ -6,11 +6,72 @@
     state: present
     update_cache: true
 
-- name: Deploy HAProxy
+- name: Ensure PKI directory structure exists
+  become: true
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "/etc/pki/myca", mode: "0755" }
+    - { path: "/etc/pki/myca/certs", mode: "0755" }
+    - { path: "/etc/pki/myca/private", mode: "0700" }
+    - { path: "/etc/haproxy/certs", mode: "0755" }
+
+- name: Generate Root CA private key if missing
+  become: true
+  ansible.builtin.command:
+    cmd: openssl genrsa -out /etc/pki/myca/private/ca.key 4096
+    creates: /etc/pki/myca/private/ca.key
+
+- name: Generate Root CA self-signed certificate if missing
+  become: true
+  ansible.builtin.command:
+    cmd: >
+      openssl req -new -x509 -days 3650
+      -key /etc/pki/myca/private/ca.key
+      -out /etc/pki/myca/certs/ca.crt
+      -subj "/CN=MyHome CA/O=Home Lab/C=BR"
+    creates: /etc/pki/myca/certs/ca.crt
+
+- name: Generate Server private key if missing
+  become: true
+  ansible.builtin.command:
+    cmd: openssl genrsa -out /etc/pki/myca/private/internal.key 2048
+    creates: /etc/pki/myca/private/internal.key
+
+- name: Deploy HAProxy Configuration
   ansible.builtin.copy:
     src: ./configs/haproxy/haproxy.cfg
     dest: /etc/haproxy/haproxy.cfg
     owner: haproxy
     group: haproxy
     mode: "0644"
+  notify: Restart HAProxy
+
+- name: Deploy update-certs script
+  become: true
+  ansible.builtin.copy:
+    src: ./configs/haproxy/update-certs.sh
+    dest: /usr/local/bin/update-certs.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy domains.txt configuration
+  become: true
+  ansible.builtin.copy:
+    src: ./configs/haproxy/domains.txt
+    dest: /etc/pki/myca/domains.txt
+    owner: root
+    group: root
+    mode: "0644"
+  register: domains_file
+
+- name: Execute certificate generation script
+  become: true
+  ansible.builtin.command: /usr/local/bin/update-certs.sh
+  when: domains_file.changed
   notify: Restart HAProxy

@@ -1,0 +1,13 @@
+internal
+jellyfin.internal
+home.internal
+seerr.internal
+sonarr.internal
+radarr.internal
+prowlarr.internal
+bazarr.internal
+go.anilist.internal
+forgejo.internal
+torrent.internal
+pluto.internal
+readeck.internal

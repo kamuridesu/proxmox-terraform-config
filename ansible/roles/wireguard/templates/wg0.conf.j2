@@ -1,0 +1,25 @@
+{% if 'oracle' in group_names %}
+[Interface]
+Address = 10.8.0.1/24
+ListenPort = 51820
+PrivateKey = {{ wg_private_key.stdout }}
+
+[Peer]
+PublicKey = {{ hostvars[groups['vpn'][0]]['wg_public_key']['stdout'] }}
+AllowedIPs = 10.8.0.2/32, 192.168.0.0/24
+{% endif %}
+
+{% if 'vpn' in group_names %}
+[Interface]
+Address = 10.8.0.2/24
+PrivateKey = {{ wg_private_key.stdout }}
+
+PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -A FORWARD -o wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o veth0 -j MASQUERADE
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -D FORWARD -o wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o veth0 -j MASQUERADE
+
+[Peer]
+PublicKey = {{ hostvars[groups['oracle'][0]]['wg_public_key']['stdout'] }}
+Endpoint = {{ hostvars[groups['oracle'][0]]['ansible_host'] }}:51820
+AllowedIPs = 10.8.0.1/32
+PersistentKeepalive = 25
+{% endif %}

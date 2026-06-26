@@ -6,6 +6,13 @@
     - role: backup
   tags: backup
 
+- name: Setup Wireguard Tunnel
+  hosts: oracle, vpn
+  become: true
+  roles:
+    - role: wireguard
+  tags: wireguard
+
 - name: Setup Database Stack
   hosts: database
   become: true
