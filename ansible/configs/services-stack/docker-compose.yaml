@@ -113,3 +113,12 @@ services:
       - ${READECK_CONFIG}:/readeck
     ports:
       - 8000:8000
+
+  quotly:
+    image: kamuri/quote-api:1.0.0
+    container_name: quotly
+    restart: unless-stopped
+    networks:
+      - services_net
+    ports:
+      - 3100:3000
