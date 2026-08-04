@@ -11,7 +11,7 @@ networks:
 services:
   jellyfin:
     container_name: jellyfin
-    image: ghcr.io/jellyfin/jellyfin:10.11.6
+    image: ghcr.io/jellyfin/jellyfin:10.11.11
     restart: unless-stopped
     <<: *default-dns
     environment:
@@ -37,7 +37,7 @@ services:
           memory: 2G
 
   seerr:
-    image: ghcr.io/seerr-team/seerr:latest
+    image: ghcr.io/seerr-team/seerr:v3.4.1
     <<: *default-dns
     init: true
     container_name: seerr
@@ -60,7 +60,7 @@ services:
 
   sonarr:
     container_name: sonarr
-    image: ghcr.io/hotio/sonarr:release-4.0.17.2952
+    image: ghcr.io/hotio/sonarr:release-4.0.19.2979
     restart: unless-stopped
     environment:
       - PUID=${PUID}
@@ -83,7 +83,7 @@ services:
 
   radarr:
     container_name: radarr
-    image: ghcr.io/hotio/radarr:release-6.0.4.10291
+    image: ghcr.io/hotio/radarr:release-6.3.0.10514
     <<: *default-dns
     restart: unless-stopped
     environment:
@@ -106,7 +106,7 @@ services:
 
   prowlarr:
     container_name: prowlarr
-    image: ghcr.io/hotio/prowlarr:release-2.3.0.5236
+    image: ghcr.io/hotio/prowlarr:release-2.5.2.5491
     <<: *default-dns
     restart: unless-stopped
     environment:
@@ -128,7 +128,7 @@ services:
 
   bazarr:
     container_name: bazarr
-    image: ghcr.io/hotio/bazarr:release-v1.5.6
+    image: ghcr.io/hotio/bazarr:release-v1.6.0
     <<: *default-dns
     restart: unless-stopped
     environment:
@@ -153,6 +153,7 @@ services:
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:latest
     container_name: qbittorrent
+    pull_policy: every_30d
     environment:
       - PUID=${PUID}
       - PGID=${PGID}

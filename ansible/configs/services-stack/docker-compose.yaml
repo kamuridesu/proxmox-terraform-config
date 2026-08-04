@@ -9,7 +9,7 @@ networks:
 
 services:
   home:
-    image: ghcr.io/gethomepage/homepage:v1.11
+    image: ghcr.io/gethomepage/homepage:v1.13.2
     container_name: homepage
     <<: *default-dns
     environment:
@@ -23,24 +23,6 @@ services:
     ports:
       - 3000:3000
     restart: unless-stopped
-
-  pluto_api:
-    container_name: pluto-api
-    image: quay.io/kamuridesu/pluto-playlist-api
-    <<: *default-dns
-    restart: unless-stopped
-    environment:
-      - TZ_INFO=${TZ_INFO}
-      - TOTAL_DELAY_SECONDS=86400
-    networks:
-      - services_net
-    ports:
-      - 3002:3000
-    deploy:
-      resources:
-        limits:
-          cpus: 0.3
-          memory: 200M
 
   go_anilist:
     container_name: go-anilist-ical
@@ -58,7 +40,7 @@ services:
           memory: 100M
 
   forgejo:
-    image: codeberg.org/forgejo/forgejo:14
+    image: codeberg.org/forgejo/forgejo:16
     container_name: forgejo
     restart: unless-stopped
     <<: *default-dns
@@ -76,7 +58,7 @@ services:
       - 222:22
 
   adguard:
-    image: adguard/adguardhome:v0.107.74
+    image: adguard/adguardhome:v0.107.78
     container_name: adguard
     restart: unless-stopped
     <<: *default-dns
@@ -99,7 +81,6 @@ services:
       - 5443:5443/tcp
       - 5443:5443/udp
       # - 6060:6060/tcp
-      #
 
   readeck:
     image: codeberg.org/readeck/readeck:0.22.3
