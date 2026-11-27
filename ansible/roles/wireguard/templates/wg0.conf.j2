@@ -4,9 +4,21 @@ Address = 10.8.0.1/24
 ListenPort = 51820
 PrivateKey = {{ wg_private_key.stdout }}
 
+# Allow forwarding between road-warrior peers and the home gateway
+PostUp = iptables -I FORWARD 1 -i wg0 -j ACCEPT; iptables -I FORWARD 1 -o wg0 -j ACCEPT
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -D FORWARD -o wg0 -j ACCEPT
+
 [Peer]
+# Home gateway (wg-gateway CT) -> routes into the home LAN
 PublicKey = {{ hostvars[groups['vpn'][0]]['wg_public_key']['stdout'] }}
 AllowedIPs = 10.8.0.2/32, 192.168.0.0/24
+{% for peer in wg_client_peers %}
+
+[Peer]
+# {{ peer.name }}
+PublicKey = {{ peer.public_key }}
+AllowedIPs = {{ peer.allowed_ips }}
+{% endfor %}
 {% endif %}
 
 {% if 'vpn' in group_names %}
@@ -20,6 +32,9 @@ PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -D FORWARD -o wg0 -j A
 [Peer]
 PublicKey = {{ hostvars[groups['oracle'][0]]['wg_public_key']['stdout'] }}
 Endpoint = {{ hostvars[groups['oracle'][0]]['ansible_host'] }}:51820
-AllowedIPs = 10.8.0.1/32
+# 10.0.0.0/16 is the k3s VCN - traffic forwarded from a k3s node keeps its original source
+# address until it's MASQUERADEd below, so WireGuard's own receive-side filtering (AllowedIPs
+# is enforced as a source filter, not just an outbound route) must allow it through too.
+AllowedIPs = 10.8.0.0/24, 10.0.0.0/16
 PersistentKeepalive = 25
 {% endif %}

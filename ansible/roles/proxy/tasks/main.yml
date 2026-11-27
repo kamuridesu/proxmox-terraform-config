@@ -1,13 +1,11 @@
 ---
 - name: Install HAProxy
-  become: true
   ansible.builtin.apt:
     name: haproxy
     state: present
     update_cache: true
 
 - name: Ensure PKI directory structure exists
-  become: true
   ansible.builtin.file:
     path: "{{ item.path }}"
     state: directory
@@ -21,13 +19,11 @@
     - { path: "/etc/haproxy/certs", mode: "0755" }
 
 - name: Generate Root CA private key if missing
-  become: true
   ansible.builtin.command:
     cmd: openssl genrsa -out /etc/pki/myca/private/ca.key 4096
     creates: /etc/pki/myca/private/ca.key
 
 - name: Generate Root CA self-signed certificate if missing
-  become: true
   ansible.builtin.command:
     cmd: >
       openssl req -new -x509 -days 3650
@@ -37,7 +33,6 @@
     creates: /etc/pki/myca/certs/ca.crt
 
 - name: Generate Server private key if missing
-  become: true
   ansible.builtin.command:
     cmd: openssl genrsa -out /etc/pki/myca/private/internal.key 2048
     creates: /etc/pki/myca/private/internal.key
@@ -52,7 +47,6 @@
   notify: Restart HAProxy
 
 - name: Deploy update-certs script
-  become: true
   ansible.builtin.copy:
     src: ./configs/haproxy/update-certs.sh
     dest: /usr/local/bin/update-certs.sh
@@ -61,7 +55,6 @@
     mode: "0755"
 
 - name: Deploy domains.txt configuration
-  become: true
   ansible.builtin.copy:
     src: ./configs/haproxy/domains.txt
     dest: /etc/pki/myca/domains.txt
@@ -71,7 +64,6 @@
   register: domains_file
 
 - name: Execute certificate generation script
-  become: true
   ansible.builtin.command: /usr/local/bin/update-certs.sh
   when: domains_file.changed
   notify: Restart HAProxy

@@ -1,0 +1,4 @@
+---
+name: rainbot-go-gateway
+public_key: "FDtMFO2JRrFMFGQ9MqrwWnTyhN5Yn64L1H5qVA0p10E="
+allowed_ips: "10.8.0.5/32"

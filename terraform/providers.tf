@@ -9,7 +9,6 @@ terraform {
 
 provider "proxmox" {
   endpoint = var.proxmox_url
-  # api_token = var.pve_api_token
   username = "root@pam"
   password = var.proxmox_root_password
   insecure = true

@@ -37,7 +37,7 @@ services:
           memory: 2G
 
   seerr:
-    image: ghcr.io/seerr-team/seerr:v3.4.1
+    image: ghcr.io/seerr-team/seerr:v3.5.2
     <<: *default-dns
     init: true
     container_name: seerr
@@ -83,7 +83,7 @@ services:
 
   radarr:
     container_name: radarr
-    image: ghcr.io/hotio/radarr:release-6.3.0.10514
+    image: ghcr.io/hotio/radarr:release-6.4.4.10685
     <<: *default-dns
     restart: unless-stopped
     environment:
@@ -106,7 +106,7 @@ services:
 
   prowlarr:
     container_name: prowlarr
-    image: ghcr.io/hotio/prowlarr:release-2.5.2.5491
+    image: ghcr.io/hotio/prowlarr:release-2.7.0.5723
     <<: *default-dns
     restart: unless-stopped
     environment:
@@ -128,7 +128,7 @@ services:
 
   bazarr:
     container_name: bazarr
-    image: ghcr.io/hotio/bazarr:release-v1.6.0
+    image: ghcr.io/hotio/bazarr:release-v1.6.1
     <<: *default-dns
     restart: unless-stopped
     environment:

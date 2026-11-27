@@ -21,13 +21,11 @@
   when: not backup_dir_stat.stat.exists
 
 - name: Restore Docker Compose stack configuration (/opt/home-server/)
-  become: true
   ansible.posix.synchronize:
     mode: push
     src: "{{ local_backup_dir }}/"
     dest: "/opt/home-server/"
     rsync_opts:
-      - "--exclude=app_configs"
       - "--exclude=*app_configs*"
 
 - name: Check for .env in the local backup
@@ -52,7 +50,6 @@
   changed_when: false
 
 - name: Restore app configurations
-  become: true
   ansible.posix.synchronize:
     mode: push
     src: "{{ local_backup_dir }}/{{ local_root_folder.stdout | basename }}/"

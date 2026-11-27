@@ -1,0 +1,9 @@
+[Interface]
+PrivateKey = {{ peer_private_key.stdout }}
+Address = {{ peer_tunnel_ip }}
+
+[Peer]
+PublicKey = {{ oracle_public_key.stdout }}
+Endpoint = {{ ansible_host }}:51820
+AllowedIPs = {{ peer_allowed_ips }}
+PersistentKeepalive = 25

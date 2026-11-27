@@ -1,17 +1,89 @@
 - name: Backup Existing Stacks
   hosts: media, services, database
-  gather_facts: true
   become: true
   roles:
     - role: backup
   tags: backup
+
+- name: Generate a new WireGuard road-warrior peer
+  hosts: oracle
+  gather_facts: false
+  tags: ["never", "wg_peer"]
+  vars:
+    peer_dir: "{{ lookup('env', 'HOME') }}/.wireguard-peers/{{ peer_name }}"
+    peer_def_path: "{{ playbook_dir }}/roles/wireguard/vars/peers/{{ peer_name }}.yml"
+  tasks:
+    - name: Require peer_name, peer_tunnel_ip and peer_allowed_ips
+      ansible.builtin.assert:
+        that:
+          - peer_name is defined
+          - peer_tunnel_ip is defined
+          - peer_allowed_ips is defined
+        fail_msg: >-
+          Run with -e peer_name=<name> -e peer_tunnel_ip=10.8.0.X/32
+          -e peer_allowed_ips=<cidr>
+
+    - name: Read the oracle VM's public key
+      become: true
+      ansible.builtin.shell: wg pubkey < /etc/wireguard/private.key
+      register: oracle_public_key
+      changed_when: false
+
+    - name: Generate peer keys and config locally
+      delegate_to: localhost
+      become: false
+      block:
+        - name: Ensure local peer directory exists
+          ansible.builtin.file:
+            path: "{{ peer_dir }}"
+            state: directory
+            mode: "0700"
+
+        - name: Generate the private key if missing (0600, never leaves this machine)
+          ansible.builtin.shell: umask 077 && wg genkey > '{{ peer_dir }}/private.key'
+          args:
+            creates: "{{ peer_dir }}/private.key"
+
+        - name: Read the private key
+          no_log: true
+          ansible.builtin.command: cat "{{ peer_dir }}/private.key"
+          register: peer_private_key
+          changed_when: false
+
+        - name: Derive and save the public key
+          ansible.builtin.shell: "wg pubkey < '{{ peer_dir }}/private.key' | tee '{{ peer_dir }}/public.key'"
+          register: peer_public_key
+          changed_when: false
+
+        - name: Render the client wg0.conf (contains the private key)
+          no_log: true
+          ansible.builtin.template:
+            src: templates/road_warrior_wg0.conf.j2
+            dest: "{{ peer_dir }}/wg0.conf"
+            mode: "0600"
+
+        - name: Write the peer's public-key definition into the wireguard role
+          ansible.builtin.copy:
+            dest: "{{ peer_def_path }}"
+            mode: "0644"
+            content: |
+              ---
+              name: {{ peer_name }}
+              public_key: "{{ peer_public_key.stdout }}"
+              allowed_ips: "{{ peer_tunnel_ip }}"
+
+        - name: Report what was generated
+          ansible.builtin.debug:
+            msg:
+              - "Peer definition written to {{ peer_def_path }} (public key only, safe to commit)."
+              - "Client config written to {{ peer_dir }}/wg0.conf - it is never printed here."
 
 - name: Setup Wireguard Tunnel
   hosts: oracle, vpn
   become: true
   roles:
     - role: wireguard
-  tags: wireguard
+  tags: ["wireguard", "wg_peer"]
 
 - name: Setup Database Stack
   hosts: database
@@ -48,7 +120,6 @@
   tags: services
 
 - name: Provision docker
-  gather_facts: true
   hosts: dockerable
   remote_user: root
   roles:
@@ -62,3 +133,81 @@
   tags: ["never", "restore"]
   roles:
     - role: restore
+
+- name: Bump compose image tags whose releases passed the cooldown period
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tags: ["never", "update_images"]
+  vars:
+    image_min_age_days: 14
+    image_allow_major: false
+    image_update_exclude: []
+    image_update_stacks:
+      media: configs/media-stack/docker-compose.yaml
+      services: configs/services-stack/docker-compose.yaml
+  tasks:
+    - name: Check registries and update image tags at least {{ image_min_age_days }} days old
+      compose_image_updates:
+        path: "{{ playbook_dir }}/{{ item.value }}"
+        min_age_days: "{{ image_min_age_days | int }}"
+        allow_major: "{{ image_allow_major | bool }}"
+        exclude: "{{ image_update_exclude }}"
+      loop: "{{ image_update_stacks | dict2items }}"
+      loop_control:
+        label: "{{ item.key }}"
+      register: image_update_results
+
+    - name: Summarize image updates
+      ansible.builtin.debug:
+        msg:
+          stack: "{{ item.item.key }}"
+          updated: >-
+            {% set out = [] -%}
+            {% for u in item.updates -%}
+            {% set held = u.held_back | map(attribute='tag') | join(', ') -%}
+            {% set _ = out.append(u.image ~ ': ' ~ u.from ~ ' -> ' ~ u.to
+                 ~ ((' (held back, under ' ~ image_min_age_days ~ ' days old: ' ~ held ~ ')') if held else '')) -%}
+            {% endfor -%}
+            {{ out }}
+          unchanged: "{{ item.unchanged | map(attribute='image') | zip(item.unchanged | map(attribute='reason')) | map('join', ': ') | list }}"
+          errors: "{{ item.errors }}"
+      loop: "{{ image_update_results.results }}"
+      loop_control:
+        label: "{{ item.item.key }}"
+
+    - name: Record which stacks need a redeploy
+      ansible.builtin.set_fact:
+        updated_stacks: "{{ image_update_results.results | selectattr('changed') | map(attribute='item.key') | list }}"
+
+- name: Redeploy media stack with updated images
+  hosts: media
+  become: true
+  gather_facts: false
+  tags: ["never", "update_images"]
+  tasks:
+    - name: Apply media stack
+      ansible.builtin.include_role:
+        name: app_stack
+      vars:
+        stack_src_dir: "./configs/media-stack"
+      when:
+        - image_update_redeploy | default(true) | bool
+        - not ansible_check_mode
+        - "'media' in hostvars['localhost'].updated_stacks"
+
+- name: Redeploy services stack with updated images
+  hosts: services
+  become: true
+  gather_facts: false
+  tags: ["never", "update_images"]
+  tasks:
+    - name: Apply services stack
+      ansible.builtin.include_role:
+        name: app_stack
+      vars:
+        stack_src_dir: "./configs/services-stack"
+      when:
+        - image_update_redeploy | default(true) | bool
+        - not ansible_check_mode
+        - "'services' in hostvars['localhost'].updated_stacks"

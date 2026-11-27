@@ -46,7 +46,6 @@ resource "proxmox_virtual_environment_container" "haproxy_edge" {
 
   start_on_boot = true
 
-
   tags = ["proxy"]
 }
 

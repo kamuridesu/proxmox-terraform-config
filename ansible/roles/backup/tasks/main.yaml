@@ -1,7 +1,6 @@
 ---
 - name: Create local backup directory for the host
   delegate_to: localhost
-  run_once: false
   become: false
   ansible.builtin.file:
     path: "{{ playbook_dir }}/backups/{{ inventory_hostname }}_{{ ansible_facts.date_time.date }}"
@@ -9,13 +8,11 @@
     mode: "0755"
 
 - name: Check if compose .env file exists
-  become: true
   ansible.builtin.stat:
     path: /opt/home-server/.env
   register: env_file
 
 - name: Extract ROOT_FOLDER from .env (if it exists)
-  become: true
   ansible.builtin.shell: |
     set -a
     source /opt/home-server/.env
@@ -45,7 +42,6 @@
   when: "'database' in group_names"
   block:
     - name: Dump all PostgreSQL databases and roles to a file
-      become: true
       become_method: su
       become_user: postgres
       ansible.builtin.shell: pg_dumpall > /tmp/db_backup_{{ ansible_facts.date_time.date }}.sql
@@ -59,7 +55,6 @@
         dest: "{{ playbook_dir }}/backups/{{ inventory_hostname }}_{{ ansible_facts.date_time.date }}/"
 
     - name: Cleanup temporary remote PostgreSQL dump
-      become: true
       ansible.builtin.file:
         path: "/tmp/db_backup_{{ ansible_facts.date_time.date }}.sql"
         state: absent

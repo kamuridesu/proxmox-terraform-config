@@ -50,7 +50,6 @@ resource "proxmox_virtual_environment_container" "services_stack" {
 
   start_on_boot = true
 
-
   tags = ["services", "dockerable"]
 }
 

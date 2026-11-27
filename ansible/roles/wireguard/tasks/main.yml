@@ -1,6 +1,5 @@
 ---
 - name: Install Wireguard and iptables
-  become: true
   ansible.builtin.apt:
     name:
       - wireguard
@@ -9,41 +8,29 @@
     state: present
     update_cache: true
 
-- name: Check if private key exists
-  become: true
-  ansible.builtin.stat:
-    path: /etc/wireguard/private.key
-  register: wg_priv_key_file
-
-- name: Generate wireguard private key
-  become: true
-  ansible.builtin.shell: wg genkey
-  register: wg_new_private_key
-  changed_when: false
-  when: not wg_priv_key_file.stat.exists
-
-- name: Save private key
-  become: true
-  ansible.builtin.copy:
-    content: "{{ wg_new_private_key.stdout }}\n"
-    dest: /etc/wireguard/private.key
-    mode: "0600"
-  when: not wg_priv_key_file.stat.exists
+- name: Generate wireguard private key if missing
+  ansible.builtin.shell: umask 077 && wg genkey > /etc/wireguard/private.key
+  args:
+    creates: /etc/wireguard/private.key
 
 - name: Read private key
-  become: true
   ansible.builtin.command: cat /etc/wireguard/private.key
   register: wg_private_key
   changed_when: false
+  no_log: true
 
-- name: Generate and register public key
-  become: true
-  ansible.builtin.shell: echo "{{ wg_private_key.stdout }}" | wg pubkey
+- name: Derive public key
+  ansible.builtin.shell: wg pubkey < /etc/wireguard/private.key
   register: wg_public_key
   changed_when: false
 
+- name: Load road-warrior peer definitions
+  ansible.builtin.set_fact:
+    wg_client_peers: "{{ wg_client_peers + [lookup('file', item) | from_yaml] }}"
+  loop: "{{ query('fileglob', role_path ~ '/vars/peers/*.yml') | sort }}"
+  when: "'oracle' in group_names"
+
 - name: Enable IPv4 forwarding
-  become: true
   ansible.posix.sysctl:
     name: net.ipv4.ip_forward
     value: "1"
@@ -52,7 +39,6 @@
     reload: true
 
 - name: Deploy Wireguard config
-  become: true
   ansible.builtin.template:
     src: wg0.conf.j2
     dest: /etc/wireguard/wg0.conf
@@ -60,7 +46,6 @@
   notify: Restart Wireguard
 
 - name: Ensure wireguard is enabled and running
-  become: true
   ansible.builtin.systemd:
     name: wg-quick@wg0
     state: started

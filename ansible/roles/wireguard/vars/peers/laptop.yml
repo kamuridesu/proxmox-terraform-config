@@ -1,0 +1,4 @@
+---
+name: laptop
+public_key: "rAUPJUq3l39NOqrQVC2zbjm9Ikzg1dm9SCQb05LUcUE="
+allowed_ips: "10.8.0.3/32"

@@ -66,7 +66,6 @@ resource "proxmox_virtual_environment_container" "media_stack" {
 
   start_on_boot = true
 
-
   tags = ["media", "dockerable"]
 }
 

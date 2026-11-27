@@ -1,6 +1,5 @@
 ---
 - name: Update and install dependencies
-  become: true
   ansible.builtin.apt:
     state: present
     update_cache: true
@@ -27,7 +26,6 @@
 - name: Install Docker and Docker Compose
   ansible.builtin.apt:
     state: present
-    update_cache: true
     name:
       - docker-ce
       - docker-ce-cli

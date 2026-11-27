@@ -58,7 +58,7 @@ services:
       - 222:22
 
   adguard:
-    image: adguard/adguardhome:v0.107.78
+    image: adguard/adguardhome:v0.107.80
     container_name: adguard
     restart: unless-stopped
     <<: *default-dns
@@ -83,7 +83,7 @@ services:
       # - 6060:6060/tcp
 
   readeck:
-    image: codeberg.org/readeck/readeck:0.22.3
+    image: codeberg.org/readeck/readeck:0.23.5
     container_name: readeck
     restart: unless-stopped
     <<: *default-dns
